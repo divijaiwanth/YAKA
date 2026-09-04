@@ -1,7 +1,10 @@
+node_modules/
+dist/
 .env
-.env.*
-!.env.example
-.env/
-__pycache__/
-*.pyc
-.venv/
+data/*.db*
+*.tsbuildinfo
+
+# leftover from the razorpay-guardrail/ -> repo root flatten; a stray
+# locked SQLite WAL file under here couldn't be deleted (stuck Windows
+# file handle). Harmless leftover, never meant to be tracked.
+/razorpay-guardrail/
