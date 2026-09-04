@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/banner.png" alt="razorpay-guardrail banner" width="100%" />
+</p>
+
 # razorpay-guardrail
 
 **A safety layer for agentic payments that an LLM cannot talk its way
