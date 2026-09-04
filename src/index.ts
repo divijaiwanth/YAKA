@@ -15,7 +15,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { chargePaymentInputSchema, handleChargePayment } from "./tools/chargePayment.js";
 import { createMandateInputSchema, handleCreateMandate } from "./tools/createMandate.js";
 
-const server = new McpServer({ name: "razorpay-guardrail", version: "0.1.0" });
+const server = new McpServer({ name: "yaka", version: "0.1.0" });
 
 server.registerTool(
   "create_mandate",
@@ -45,7 +45,7 @@ server.registerTool(
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("razorpay-guardrail MCP server running on stdio");
+  console.error("Yaka MCP server running on stdio");
 }
 
 main().catch((err) => {

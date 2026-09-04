@@ -1,14 +1,14 @@
 <p align="center">
-  <img src="./assets/banner.png" alt="razorpay-guardrail banner" width="100%" />
+  <img src="./assets/banner.png" alt="Yaka banner" width="100%" />
 </p>
 
-# razorpay-guardrail
+# Yaka
 
 **A safety layer for agentic payments that an LLM cannot talk its way
 around.**
 
-`razorpay-guardrail` is an [MCP](https://modelcontextprotocol.io) server
-that wraps Razorpay's payment API with hard-enforced spending controls,
+Yaka is an [MCP](https://modelcontextprotocol.io) server that wraps
+Razorpay's payment API with hard-enforced spending controls,
 duplicate-charge protection, and a full audit trail — built for a world
 where an LLM agent, not a human, is the one deciding to spend money.
 
@@ -163,7 +163,7 @@ Code):
 ```json
 {
   "mcpServers": {
-    "razorpay-guardrail": {
+    "yaka": {
       "command": "node",
       "args": ["/absolute/path/to/this/repo/dist/src/index.js"],
       "env": {
@@ -186,8 +186,8 @@ and fully restart Claude Desktop after any source change.
 
 Then, in conversation:
 
-> Use razorpay-guardrail to create a UPI Autopay mandate for payee
-> "acme-vendor", amount 1500, purpose "monthly subscription"
+> Use yaka to create a UPI Autopay mandate for payee "acme-vendor",
+> amount 1500, purpose "monthly subscription"
 
 > Charge 15000 against that mandate for payee "acme-vendor"
 

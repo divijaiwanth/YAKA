@@ -1,7 +1,6 @@
-// Standalone script simulating a misbehaving agent talking to
-// razorpay-guardrail over the real MCP protocol (spawns its own instance
-// of the server as a subprocess, same as a real MCP client — e.g. Claude
-// Desktop — would):
+// Standalone script simulating a misbehaving agent talking to Yaka over
+// the real MCP protocol (spawns its own instance of the server as a
+// subprocess, same as a real MCP client — e.g. Claude Desktop — would):
 //
 //   a) fires the identical charge 5x rapidly — should dedupe via
 //      idempotency, only 1 real Razorpay call happens
@@ -32,7 +31,7 @@ function parseToolResult(res: ToolTextResult): unknown {
 }
 
 async function main(): Promise<void> {
-  console.log("=== razorpay-guardrail demo-attack ===\n");
+  console.log("=== Yaka demo-attack ===\n");
 
   resetAll();
   console.log("(reset today's spend/payee tracking for a clean run)\n");

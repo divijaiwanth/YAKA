@@ -1,4 +1,4 @@
-# razorpay-guardrail — developer documentation
+# Yaka — developer documentation
 
 This is the "read this before you tell anyone about it" doc — a plain-language
 walkthrough of what was actually built, why it's shaped this way, what's
@@ -55,7 +55,7 @@ flowchart TD
     Agent["LLM agent<br/>(Claude Desktop / Claude Code / any MCP client)"]
     MCP["MCP protocol boundary<br/>(stdio)"]
 
-    subgraph Server["razorpay-guardrail server process"]
+    subgraph Server["Yaka server process"]
         direction TB
         CM["create_mandate handler"]
         CP["charge_payment handler"]

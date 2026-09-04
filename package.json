@@ -1,5 +1,5 @@
 {
-  "name": "razorpay-guardrail",
+  "name": "yaka",
   "version": "0.1.0",
   "description": "MCP server that wraps Razorpay's payment API with hard-enforced safety controls for agentic/LLM payment workflows.",
   "type": "module",
