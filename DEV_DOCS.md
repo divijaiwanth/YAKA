@@ -228,6 +228,24 @@ contact unique per call — sidesteps the collision entirely.
   the original spec, but architecturally it would slot in as a fourth
   gate check that returns a "pending approval" state instead of
   allow/block, with a separate tool or channel to actually approve.
+- **The bigger picture**: this server is one node (the MCP policy gateway)
+  in a larger planned multi-agent ledger architecture — see the
+  "Roadmap" section in `README.md` for the full diagram. Concretely, that
+  means: `audit_log`/`idempotency_store` are local SQLite scoped to this
+  one server today; the planned version is a shared Postgres ledger a
+  master/orchestrator and multiple worker agents all write to, with an
+  evaluator agent that can loop a worker back for more evidence instead
+  of just allow/block, and a real SIEM/alerting integration for genuine
+  anomalies (distinct from a routine policy-gate block, which is expected,
+  normal behavior, not an incident).
+- **Voice briefing mode**: a planned feature, not yet started — a spoken,
+  regional-language summary of payments in flight and upcoming, generated
+  from the ledger. Shape it as a separate read-only consumer of
+  `audit_log`/the future shared ledger (never a write path), e.g. an LLM
+  turns a query over recent/pending rows into a short natural-language
+  script, then a TTS engine with regional-language voices speaks it. Keep
+  it downstream of the safety layer, not part of it — it should never be
+  able to trigger or approve anything, only report.
 
 ## 9. Operational notes
 

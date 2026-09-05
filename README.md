@@ -219,6 +219,52 @@ No anomaly detection or ML, no human-in-the-loop approval flow, no
 webhook handling beyond what a test-mode charge needs, no UI/dashboard —
 the structured audit log is the observability story for this project.
 
+## Roadmap: where this fits into the bigger picture
+
+Yaka today is deliberately narrow — one MCP server, two tools, one
+payment provider. It's the first concrete piece of a larger planned
+architecture: a multi-agent ledger platform where specialized worker
+agents (payments, error investigation, retrieval, and others) operate
+under a master/orchestrator agent, with an evaluator that can approve a
+worker's output, send it back for another pass, or escalate a genuine
+conflict — all backed by a centralized ledger (Postgres) that tracks
+every thread, session, and tool call for full telemetry.
+
+<p align="center">
+  <img src="./assets/future-architecture.png" alt="Planned multi-agent ledger architecture" width="100%" />
+</p>
+
+In that diagram, **Yaka is the MCP Server node** — the enforcement
+boundary between Worker Agents and Company Tools (Razorpay today, more
+providers later). The rest of the diagram is future scope, not yet built:
+
+- **Master/orchestrator + specialized worker agents** — today's dispatcher
+  logic is minimal (there's no dispatcher at all yet; Yaka is a pure tool
+  server); the planned version routes requests across multiple
+  domain-specific agents instead of one.
+- **Evaluator with loop-back**, not just pass/fail — checks a worker's
+  output and can send it back for more evidence before it ever reaches
+  the user or a conflict is escalated.
+- **Centralized ledger (Postgres) + telemetry** — today's audit trail is
+  local SQLite scoped to this one server; the planned version is a shared
+  ledger across every connector and agent, with full request tracing.
+- **SIEM/alerting integration** — a genuine conflict (not just a policy
+  gate block, but something the evaluator flags as anomalous) notifies a
+  real alerting platform, not just a local audit log row.
+- **RAG pipelines** — worker agents pulling from company policy/knowledge
+  sources for context beyond what the ledger and tool calls provide.
+- **More connectors behind the same MCP policy-gateway pattern** — the
+  "safety enforced inside the tool handler, not as a skippable tool"
+  architecture Yaka proves out for Razorpay generalizes to any Company
+  Tool behind an MCP server.
+
+**Also planned: a voice briefing mode.** A spoken summary — in the user's
+regional language — of payments currently in flight and ones about to go
+out, generated from the ledger rather than requiring someone to read a
+dashboard or the audit log directly. The idea is the same one behind the
+rest of this project: the safety/observability layer should be usable by
+a person, not just legible to another system.
+
 ## License
 
 MIT — see [`LICENSE`](./LICENSE).
