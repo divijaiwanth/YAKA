@@ -2,6 +2,7 @@ node_modules/
 dist/
 .env
 data/*.db*
+data/*.log
 *.tsbuildinfo
 
 # leftover from the razorpay-guardrail/ -> repo root flatten; a stray

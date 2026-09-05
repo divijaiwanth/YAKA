@@ -1,15 +1,27 @@
-// Mandatory middleware — called INSIDE charge_payment's handler, before any
-// Razorpay API call or idempotency check. This is NOT an MCP tool the LLM
-// can choose to call or skip; it's a wall the tool call hits every time.
+// Mandatory middleware — called INSIDE every gated tool's handler, before
+// any Razorpay API call or idempotency check. This is NOT an MCP tool the
+// LLM can choose to call or skip; it's a wall every gated tool call hits.
+//
+// Generalized across every gated tool, not just charge_payment: the gate
+// only needs two universal facts about any money-moving call — how much,
+// and (where applicable) who the money is going to. `counterparty` is
+// optional because it only makes sense for some operations: paying a
+// mandate's payee has one, but capturing your own already-authorized
+// payment, refunding money back to whoever already paid you, or settling
+// your own balance to your own bank account do not — there's no new
+// external party to sprawl-check for those.
 
-import { getTodaysPayeeIds, getTodaysSpend } from "./db.js";
+import { getTodaysCounterparties, getTodaysSpend } from "./db.js";
 
-export interface ChargeInput {
+// Every tool that participates in the shared daily cap / payee-sprawl
+// tracking. Adding a new gated tool means adding its name here — see
+// guardedTool.ts for the pipeline every one of these routes through.
+export const GATED_TOOLS = ["charge_payment", "capture_payment", "create_refund", "create_instant_settlement"] as const;
+
+export interface GateInput {
   agentId: string;
-  payeeId: string;
   amount: number;
-  mandateId: string;
-  purpose: string;
+  counterparty?: string;
 }
 
 export type GateDecision =
@@ -31,17 +43,20 @@ function maxPayees(): number {
 }
 
 // Checks, in order (per spec):
-//   1. VELOCITY_LIMIT — today's spend so far + input.amount > DAILY_CAP
-//   2. AMOUNT_CAP     — input.amount > SINGLE_TXN_CAP
-//   3. PAYEE_SPRAWL   — this would be a new distinct payee beyond MAX_PAYEES today
-export function policyGate(input: ChargeInput): GateDecision {
+//   1. VELOCITY_LIMIT — today's spend across EVERY gated tool + this
+//      amount > DAILY_CAP
+//   2. AMOUNT_CAP     — this amount alone > SINGLE_TXN_CAP
+//   3. PAYEE_SPRAWL   — only when a counterparty is given: this would be a
+//      new distinct counterparty beyond MAX_PAYEES paid today (across
+//      every gated tool)
+export function policyGate(input: GateInput): GateDecision {
   const cap = dailyCap();
-  const todaysSpend = getTodaysSpend(input.agentId);
+  const todaysSpend = getTodaysSpend(input.agentId, GATED_TOOLS);
   if (todaysSpend + input.amount > cap) {
     return {
       allowed: false,
       code: "VELOCITY_LIMIT",
-      reason: `Today's spend (${todaysSpend}) + this charge (${input.amount}) would exceed the daily cap of ${cap}`,
+      reason: `Today's spend across all payment tools (${todaysSpend}) + this amount (${input.amount}) would exceed the daily cap of ${cap}`,
     };
   }
 
@@ -54,15 +69,17 @@ export function policyGate(input: ChargeInput): GateDecision {
     };
   }
 
-  const maxP = maxPayees();
-  const payeeIds = getTodaysPayeeIds(input.agentId);
-  const isNewPayee = !payeeIds.includes(input.payeeId);
-  if (isNewPayee && payeeIds.length >= maxP) {
-    return {
-      allowed: false,
-      code: "PAYEE_SPRAWL",
-      reason: `Agent has already paid ${payeeIds.length} distinct payees today (max ${maxP}); ${input.payeeId} would be a new one`,
-    };
+  if (input.counterparty) {
+    const maxP = maxPayees();
+    const counterparties = getTodaysCounterparties(input.agentId, GATED_TOOLS);
+    const isNew = !counterparties.includes(input.counterparty);
+    if (isNew && counterparties.length >= maxP) {
+      return {
+        allowed: false,
+        code: "PAYEE_SPRAWL",
+        reason: `Agent has already paid ${counterparties.length} distinct counterparties today (max ${maxP}); ${input.counterparty} would be a new one`,
+      };
+    }
   }
 
   return { allowed: true };

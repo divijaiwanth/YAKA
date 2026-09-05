@@ -126,28 +126,42 @@ export function getAuditLog(): AuditLogRow[] {
   return getDb().prepare("SELECT * FROM audit_log ORDER BY id ASC").all() as AuditLogRow[];
 }
 
-// Both spend and payee tracking read from DISTINCT input_json rows for
-// today's *allowed* charge_payment attempts — since an exact repeat of the
-// same (payeeId, amount, mandateId, purpose) produces an identical
-// input_json string, this naturally collapses idempotent retries so they
-// don't inflate the daily spend or payee count. No extra bookkeeping needed.
-function todaysAllowedChargeInputs(agentId: string): Record<string, unknown>[] {
+// Both spend and counterparty tracking read from DISTINCT input_json rows
+// for today's *allowed* attempts across EVERY gated tool combined, not just
+// one — this is what makes the daily cap and payee-sprawl limit a real
+// policy layer instead of a per-tool check. An exact repeat of the same
+// args produces an identical input_json string, which naturally collapses
+// idempotent retries so they don't inflate the daily spend or counterparty
+// count. No extra bookkeeping needed.
+//
+// Every gated tool's args are expected to include a generic `amount`
+// field, and optionally a `counterparty` field where the operation has one
+// (a mandate's payee, for example) — capture/refund/settlement operations
+// don't move money to a new external party, so they simply omit it.
+function todaysAllowedGatedInputs(agentId: string, gatedTools: readonly string[]): Record<string, unknown>[] {
+  const placeholders = gatedTools.map(() => "?").join(", ");
   const rows = getDb()
     .prepare(
       `SELECT DISTINCT input_json FROM audit_log
-       WHERE agent_id = ? AND tool_name = 'charge_payment'
+       WHERE agent_id = ? AND tool_name IN (${placeholders})
          AND gate_decision = 'allowed' AND date(timestamp) = date('now')`
     )
-    .all(agentId) as { input_json: string }[];
+    .all(agentId, ...gatedTools) as { input_json: string }[];
   return rows.map((r) => JSON.parse(r.input_json));
 }
 
-export function getTodaysSpend(agentId: string): number {
-  return todaysAllowedChargeInputs(agentId).reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+export function getTodaysSpend(agentId: string, gatedTools: readonly string[]): number {
+  return todaysAllowedGatedInputs(agentId, gatedTools).reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
 }
 
-export function getTodaysPayeeIds(agentId: string): string[] {
-  return [...new Set(todaysAllowedChargeInputs(agentId).map((i) => String(i.payeeId)))];
+export function getTodaysCounterparties(agentId: string, gatedTools: readonly string[]): string[] {
+  return [
+    ...new Set(
+      todaysAllowedGatedInputs(agentId, gatedTools)
+        .map((i) => i.counterparty)
+        .filter((c): c is string => typeof c === "string")
+    ),
+  ];
 }
 
 // Demo utility: wipes both tables so the policy gate acts like a fresh day.

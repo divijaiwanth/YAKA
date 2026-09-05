@@ -48,6 +48,15 @@ export interface CreateMandateArgs {
 export interface CreateMandateResult {
   mandateId: string;
   status: string;
+  /** The mandate's actual spending cap — what future charges are limited to. */
+  maxAmount: number;
+  /**
+   * The nominal amount on the registration order itself. Razorpay requires
+   * this to be 0 for eMandate and ₹1 (100 paise) for UPI Autopay — it is NOT
+   * the mandate's cap, and seeing it in the raw response is expected, not a bug.
+   */
+  registrationAmount: number;
+  note: string;
   raw: unknown;
 }
 
@@ -141,7 +150,18 @@ export async function createRazorpayMandate(args: CreateMandateArgs): Promise<Cr
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
 
-  return { mandateId: order.id, status: order.status, raw: order };
+  const registrationAmount = args.method === "upi_autopay" ? 100 : 0;
+  return {
+    mandateId: order.id,
+    status: order.status,
+    maxAmount: args.amount,
+    registrationAmount,
+    note:
+      `Mandate cap is ${args.amount} (stored in token.max_amount). The raw order's ` +
+      `amount of ${registrationAmount} is Razorpay's required registration amount for ` +
+      `${args.method}, not the spending cap — this is expected.`,
+    raw: order,
+  };
 }
 
 export async function chargeRazorpayMandate(args: ChargeMandateArgs): Promise<ChargeMandateResult> {
@@ -176,4 +196,31 @@ export async function chargeRazorpayMandate(args: ChargeMandateArgs): Promise<Ch
     status: "submitted",
     raw: result,
   };
+}
+
+export interface CapturePaymentArgs {
+  paymentId: string;
+  amount: number;
+  currency: string;
+}
+
+export async function captureRazorpayPayment(args: CapturePaymentArgs): Promise<unknown> {
+  return getClient().payments.capture(args.paymentId, args.amount, args.currency);
+}
+
+export interface CreateRefundArgs {
+  paymentId: string;
+  amount: number;
+}
+
+export async function createRazorpayRefund(args: CreateRefundArgs): Promise<unknown> {
+  return getClient().payments.refund(args.paymentId, { amount: args.amount });
+}
+
+export interface CreateInstantSettlementArgs {
+  amount: number;
+}
+
+export async function createRazorpayInstantSettlement(args: CreateInstantSettlementArgs): Promise<unknown> {
+  return getClient().settlements.createOndemandSettlement({ amount: args.amount });
 }

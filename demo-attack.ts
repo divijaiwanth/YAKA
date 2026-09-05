@@ -7,6 +7,10 @@
 //   b) attempts a charge that exceeds DAILY_CAP — blocked, VELOCITY_LIMIT
 //   c) attempts charges to more than MAX_PAYEES distinct payees — blocked
 //      with PAYEE_SPRAWL on the one that crosses the limit
+//   e) attempts a DIFFERENT tool (capture_payment) that alone is fine, but
+//      combined with (a)'s charge_payment spend would exceed DAILY_CAP —
+//      blocked too, proving the cap is shared across every gated tool,
+//      not tracked per-tool
 //   d) prints the audit log at the end so the blocking is visible and
 //      explainable
 //
@@ -54,6 +58,8 @@ async function main(): Promise<void> {
 
   const charge = async (args: Record<string, unknown>) =>
     parseToolResult((await client.callTool({ name: "charge_payment", arguments: args })) as ToolTextResult);
+  const capture = async (args: Record<string, unknown>) =>
+    parseToolResult((await client.callTool({ name: "capture_payment", arguments: args })) as ToolTextResult);
 
   // --- a) identical charge fired 5x rapidly ---
   console.log("--- (a) firing the SAME charge 5x rapidly (should dedupe) ---");
@@ -105,6 +111,20 @@ async function main(): Promise<void> {
     purpose: "payee-sprawl-breaker",
   });
   console.log("  charge to ONE MORE new payee (should be blocked):", JSON.stringify(sprawlBreaker), "\n");
+
+  // --- e) a DIFFERENT tool, same shared daily cap ---
+  console.log(`--- (e) attempting capture_payment (a different tool) that alone fits under DAILY_CAP, but not on top of what charge_payment already spent today ---`);
+  const crossToolResult = await capture({
+    agentId: AGENT_ID,
+    paymentId: "pay_demo_cross_tool",
+    amount: dailyCap,
+    currency: "INR",
+  });
+  console.log("  result:", JSON.stringify(crossToolResult));
+  console.log(
+    "  -> blocked by VELOCITY_LIMIT even though this is the agent's first capture_payment call —\n" +
+      "     the cap tracks spend across every gated tool combined, not per tool.\n"
+  );
 
   // --- d) print the audit log ---
   const log = getAuditLog();
